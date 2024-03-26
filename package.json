@@ -13,8 +13,9 @@
   ],
   "author": "Timir",
   "license": "ISC",
-  "dependencies": {
-    "D": "^1.0.0",
-    "nodemon": "^3.1.0"
+  
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.5"
   }
 }
