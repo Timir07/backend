@@ -4,6 +4,22 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+//await -> database dusre continent maine hai
+const generateAccessAndRefreshTokens = async(userId) => {
+    try {
+        const user = await User.findById(userId); //this is one instance of db 
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken; //now refreshToken is saved for this instance in db.
+        await user.save({ validationBeforeSave: false });//false as we only want refreshToken to get saved not password
+
+        return {accessToken, refreshToken};
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generationg access and refresh token")
+    }
+}
+
 const registerUser = asyncHandler( async(req, res) => {
     //1. get user details from frontend
     const {fullName, email, userName, password} = req.body;
@@ -98,6 +114,7 @@ const loginUser = asyncHandler( async(req, res) => {
         throw new ApiError(401, "Password incorrect")
     }
     //access and refresh token
+
     //send cookie
 });
 
