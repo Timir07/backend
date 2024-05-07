@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-
+       
 //await -> database dusre continent maine hai
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -96,11 +96,11 @@ const loginUser = asyncHandler( async(req, res) => {
     //req body -> data
     const {email, userName, password} = req.body;
     //username or email
-    if(!userName || !email){
+    if(!userName && !email){
         throw new ApiError(400, "username or email is required");
     }
     //find user
-    const user = await User.findOne({
+    const user = await User.findOne({   //here refreshToken field is empty
         $or: [{userName}, {email}]
     })
 
@@ -114,8 +114,55 @@ const loginUser = asyncHandler( async(req, res) => {
         throw new ApiError(401, "Password incorrect")
     }
     //access and refresh token
-
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");// additional query as refreshToken is added
     //send cookie
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res.status(200)
+    .cookie("accessToken", accessToken, options)    //key, value, options
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user: loggedInUser, accessToken, refreshToken,
+            },
+            "User logged In Successfully"
+        )
+    )
 });
 
-export { registerUser }
+const logoutUser = asyncHandler( async(req, res) => {
+    await User.findByIdAndUpdate(//refreshToken removal from db for logout
+        req.user._id, //from middleware jwtverify we get this
+        {
+            $set: {
+                refreshToken: undefined,
+            }
+        },
+        {
+            new: true //return updated version of db after the query, here set operation
+        }
+    )
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res.status(200) //clearing cookies from user sides
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+        new ApiResponse(
+            200,
+            {},
+            "User logged out"
+        )
+    )
+});
+
+export { registerUser, loginUser, logoutUser }
